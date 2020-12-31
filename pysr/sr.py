@@ -123,7 +123,7 @@ def pysr(X=None, y=None, weights=None,
         samples of the population, per iteration.
     :param binary_operators: list, List of strings giving the binary operators
         in Julia's Base, or in `operator.jl`.
-    :param unary_operators: list, Same but for operators taking a single `Float32`.
+    :param unary_operators: list, Same but for operators taking a single `Float64`.
     :param alpha: float, Initial temperature.
     :param annealing: bool, Whether to use annealing. You should (and it is default).
     :param fractionReplaced: float, How much of population to replace with migrating
@@ -259,9 +259,12 @@ def pysr(X=None, y=None, weights=None,
     tmpdir = Path(tempfile.mkdtemp(dir=tempdir))
     hyperparam_filename = tmpdir / f'hyperparams.jl'
     dataset_filename = tmpdir / f'dataset.jl'
-    runfile_filename = tmpdir / f'runfile.jl'
-    X_filename = tmpdir / "X.csv"
-    y_filename = tmpdir / "y.csv"
+    runfile_filename = f'runfile.jl'
+    # runfile_filename = tmpdir / f'runfile.jl'
+    # X_filename = tmpdir / "X.csv"
+    X_filename = "X.csv"
+    # y_filename = tmpdir / "y.csv"
+    y_filename = "y.csv"
     weights_filename = tmpdir / "weights.csv"
 
     def_hyperparams = ""
@@ -324,20 +327,20 @@ const bin_constraints = ["""
 const binops = {'[' + ', '.join(binary_operators) + ']'}
 const unaops = {'[' + ', '.join(unary_operators) + ']'}
 const ns=10;
-const parsimony = {parsimony:f}f0
-const alpha = {alpha:f}f0
+const parsimony = {parsimony:f}e0
+const alpha = {alpha:f}e0
 const maxsize = {maxsize:d}
 const maxdepth = {maxdepth:d}
 const fast_cycle = {'true' if fast_cycle else 'false'}
 const migration = {'true' if migration else 'false'}
 const hofMigration = {'true' if hofMigration else 'false'}
-const fractionReplacedHof = {fractionReplacedHof}f0
+const fractionReplacedHof = {fractionReplacedHof}e0
 const shouldOptimizeConstants = {'true' if shouldOptimizeConstants else 'false'}
 const hofFile = "{equation_file}"
 const nprocs = {procs:d}
 const npopulations = {populations:d}
 const nrestarts = {nrestarts:d}
-const perturbationFactor = {perturbationFactor:f}f0
+const perturbationFactor = {perturbationFactor:f}e0
 const annealing = {"true" if annealing else "false"}
 const weighted = {"true" if weights is not None else "false"}
 const batching = {"true" if batching else "false"}
@@ -361,7 +364,7 @@ const useFrequency = {"true" if useFrequency else "false"}
     op_runner = ""
     if len(binary_operators) > 0:
         op_runner += """
-@inline function BINOP!(x::Array{Float32, 1}, y::Array{Float32, 1}, i::Int, clen::Int)
+@inline function BINOP!(x::Array{Float64, 1}, y::Array{Float64, 1}, i::Int, clen::Int)
     if i === 1
         @inbounds @simd for j=1:clen
             x[j] = """f"{binary_operators[0]}""""(x[j], y[j])
@@ -378,7 +381,7 @@ end"""
 
     if len(unary_operators) > 0:
         op_runner += """
-@inline function UNAOP!(x::Array{Float32, 1}, i::Int, clen::Int)
+@inline function UNAOP!(x::Array{Float64, 1}, i::Int, clen::Int)
     if i === 1
         @inbounds @simd for j=1:clen
             x[j] = """f"{unary_operators[0]}(x[j])""""
@@ -403,12 +406,12 @@ end"""
         np.savetxt(weights_filename, weights, delimiter=',')
 
     def_datasets += f"""
-const X = readdlm("{_escape_filename(X_filename)}", ',', Float32, '\\n')
-const y = readdlm("{_escape_filename(y_filename)}", ',', Float32, '\\n')"""
+const X = readdlm("{_escape_filename(X_filename)}", ',', Float64, '\\n')
+const y = readdlm("{_escape_filename(y_filename)}", ',', Float64, '\\n')"""
 
     if weights is not None:
         def_datasets += """
-const weights = readdlm("{_escape_filename(weights_filename)}", ',', Float32, '\\n')"""
+const weights = readdlm("{_escape_filename(weights_filename)}", ',', Float64, '\\n')"""
 
     if use_custom_variable_names:
         def_hyperparams += f"""
@@ -424,7 +427,7 @@ const varMap = {'["' + '", "'.join(variable_names) + '"]'}"""
         print(f'@everywhere include("{_escape_filename(hyperparam_filename)}")', file=f)
         print(f'@everywhere include("{_escape_filename(dataset_filename)}")', file=f)
         print(f'@everywhere include("{_escape_filename(pkg_filename)}")', file=f)
-        print(f'fullRun({niterations:d}, npop={npop:d}, ncyclesperiteration={ncyclesperiteration:d}, fractionReplaced={fractionReplaced:f}f0, verbosity=round(Int32, {verbosity:f}), topn={topn:d})', file=f)
+        print(f'fullRun({niterations:d}, npop={npop:d}, ncyclesperiteration={ncyclesperiteration:d}, fractionReplaced={fractionReplaced:f}e0, verbosity=round(Int32, {verbosity:f}), topn={topn:d})', file=f)
         print(f'rmprocs(nprocs)', file=f)
 
 

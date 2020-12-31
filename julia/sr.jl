@@ -7,40 +7,40 @@ const actualMaxsize = maxsize + maxdegree
 
 
 # Sum of square error between two arrays
-function SSE(x::Array{Float32}, y::Array{Float32})::Float32
+function SSE(x::Array{Float64}, y::Array{Float64})::Float64
     diff = (x - y)
     return sum(diff .* diff)
 end
-function SSE(x::Nothing, y::Array{Float32})::Float32
-    return 1f9
+function SSE(x::Nothing, y::Array{Float64})::Float64
+    return 1e9
 end
 
 # Sum of square error between two arrays, with weights
-function SSE(x::Array{Float32}, y::Array{Float32}, w::Array{Float32})::Float32
+function SSE(x::Array{Float64}, y::Array{Float64}, w::Array{Float64})::Float64
     diff = (x - y)
     return sum(diff .* diff .* w)
 end
-function SSE(x::Nothing, y::Array{Float32}, w::Array{Float32})::Float32
+function SSE(x::Nothing, y::Array{Float64}, w::Array{Float64})::Float64
     return Nothing
 end
 
 # Mean of square error between two arrays
-function MSE(x::Nothing, y::Array{Float32})::Float32
-    return 1f9
+function MSE(x::Nothing, y::Array{Float64})::Float64
+    return 1e9
 end
 
 # Mean of square error between two arrays
-function MSE(x::Array{Float32}, y::Array{Float32})::Float32
+function MSE(x::Array{Float64}, y::Array{Float64})::Float64
     return SSE(x, y)/size(x)[1]
 end
 
 # Mean of square error between two arrays
-function MSE(x::Nothing, y::Array{Float32}, w::Array{Float32})::Float32
-    return 1f9
+function MSE(x::Nothing, y::Array{Float64}, w::Array{Float64})::Float64
+    return 1e9
 end
 
 # Mean of square error between two arrays
-function MSE(x::Array{Float32}, y::Array{Float32}, w::Array{Float32})::Float32
+function MSE(x::Array{Float64}, y::Array{Float64}, w::Array{Float64})::Float64
     return SSE(x, y, w)/sum(w)
 end
 
@@ -48,14 +48,14 @@ const len = size(X)[1]
 
 if weighted
     const avgy = sum(y .* weights)/sum(weights)
-    const baselineMSE = MSE(y, convert(Array{Float32, 1}, ones(len) .* avgy), weights)
+    const baselineMSE = MSE(y, convert(Array{Float64, 1}, ones(len) .* avgy), weights)
 else
     const avgy = sum(y)/len
-    const baselineMSE = MSE(y, convert(Array{Float32, 1}, ones(len) .* avgy))
+    const baselineMSE = MSE(y, convert(Array{Float64, 1}, ones(len) .* avgy))
 end
 
 
-function id(x::Float32)::Float32
+function id(x::Float64)::Float64
     x
 end
 
@@ -76,22 +76,22 @@ end
 mutable struct Node
     #Holds operators, variables, constants in a tree
     degree::Integer #0 for constant/variable, 1 for cos/sin, 2 for +/* etc.
-    val::Union{Float32, Integer} #Either const value, or enumerates variable
+    val::Union{Float64, Integer} #Either const value, or enumerates variable
     constant::Bool #false if variable
     op::Integer #enumerates operator (separately for degree=1,2)
     l::Union{Node, Nothing}
     r::Union{Node, Nothing}
 
-    Node(val::Float32) = new(0, val, true, 1, nothing, nothing)
+    Node(val::Float64) = new(0, val, true, 1, nothing, nothing)
     Node(val::Integer) = new(0, val, false, 1, nothing, nothing)
-    Node(op::Integer, l::Node) = new(1, 0.0f0, false, op, l, nothing)
-    Node(op::Integer, l::Union{Float32, Integer}) = new(1, 0.0f0, false, op, Node(l), nothing)
-    Node(op::Integer, l::Node, r::Node) = new(2, 0.0f0, false, op, l, r)
+    Node(op::Integer, l::Node) = new(1, 0.0e0, false, op, l, nothing)
+    Node(op::Integer, l::Union{Float64, Integer}) = new(1, 0.0e0, false, op, Node(l), nothing)
+    Node(op::Integer, l::Node, r::Node) = new(2, 0.0e0, false, op, l, r)
 
     #Allow to pass the leaf value without additional node call:
-    Node(op::Integer, l::Union{Float32, Integer}, r::Node) = new(2, 0.0f0, false, op, Node(l), r)
-    Node(op::Integer, l::Node, r::Union{Float32, Integer}) = new(2, 0.0f0, false, op, l, Node(r))
-    Node(op::Integer, l::Union{Float32, Integer}, r::Union{Float32, Integer}) = new(2, 0.0f0, false, op, Node(l), Node(r))
+    Node(op::Integer, l::Union{Float64, Integer}, r::Node) = new(2, 0.0e0, false, op, Node(l), r)
+    Node(op::Integer, l::Node, r::Union{Float64, Integer}) = new(2, 0.0e0, false, op, l, Node(r))
+    Node(op::Integer, l::Union{Float64, Integer}, r::Union{Float64, Integer}) = new(2, 0.0e0, false, op, Node(l), Node(r))
 end
 
 # Copy an equation (faster than deepcopy)
@@ -234,8 +234,8 @@ end
 
 # Randomly perturb a constant
 function mutateConstant(
-        tree::Node, T::Float32,
-        probNegate::Float32=0.01f0)::Node
+        tree::Node, T::Float64,
+        probNegate::Float64=0.01e0)::Node
     # T is between 0 and 1.
 
     if countConstants(tree) == 0
@@ -246,9 +246,9 @@ function mutateConstant(
         node = randomNode(tree)
     end
 
-    bottom = 0.1f0
-    maxChange = perturbationFactor * T + 1.0f0 + bottom
-    factor = maxChange^Float32(rand())
+    bottom = 0.1e0
+    maxChange = perturbationFactor * T + 1.0e0 + bottom
+    factor = maxChange^Float64(rand())
     makeConstBigger = rand() > 0.5
 
     if makeConstBigger
@@ -265,13 +265,13 @@ function mutateConstant(
 end
 
 # Evaluate an equation over an array of datapoints
-function evalTreeArray(tree::Node)::Union{Array{Float32, 1}, Nothing}
+function evalTreeArray(tree::Node)::Union{Array{Float64, 1}, Nothing}
     return evalTreeArray(tree, X)
 end
 
 
 # Evaluate an equation over an array of datapoints
-function evalTreeArray(tree::Node, cX::Array{Float32, 2})::Union{Array{Float32, 1}, Nothing}
+function evalTreeArray(tree::Node, cX::Array{Float64, 2})::Union{Array{Float64, 1}, Nothing}
     clen = size(cX)[1]
     if tree.degree == 0
         if tree.constant
@@ -313,10 +313,10 @@ function evalTreeArray(tree::Node, cX::Array{Float32, 2})::Union{Array{Float32, 
 end
 
 # Score an equation
-function scoreFunc(tree::Node)::Float32
+function scoreFunc(tree::Node)::Float64
     prediction = evalTreeArray(tree)
     if prediction === nothing
-        return 1f9
+        return 1e9
     end
     if weighted
         mse = MSE(prediction, y, weights)
@@ -327,20 +327,20 @@ function scoreFunc(tree::Node)::Float32
 end
 
 # Score an equation with a small batch
-function scoreFuncBatch(tree::Node)::Float32
+function scoreFuncBatch(tree::Node)::Float64
     # batchSize
     batch_idx = randperm(len)[1:batchSize]
     batch_X = X[batch_idx, :]
     prediction = evalTreeArray(tree, batch_X)
     if prediction === nothing
-        return 1f9
+        return 1e9
     end
-    size_adjustment = 1f0
+    size_adjustment = 1e0
     batch_y = y[batch_idx]
     if weighted
         batch_w = weights[batch_idx]
         mse = MSE(prediction, batch_y, batch_w)
-        size_adjustment = 1f0 * len / batchSize
+        size_adjustment = 1e0 * len / batchSize
     else
         mse = MSE(prediction, batch_y)
     end
@@ -357,12 +357,12 @@ function appendRandomOp(tree::Node)::Node
     choice = rand()
     makeNewBinOp = choice < nbin/nops
     if rand() > 0.5
-        left = Float32(randn())
+        left = Float64(randn())
     else
         left = rand(1:nvar)
     end
     if rand() > 0.5
-        right = Float32(randn())
+        right = Float64(randn())
     else
         right = rand(1:nvar)
     end
@@ -448,7 +448,7 @@ end
 
 function randomConstantNode()::Node
     if rand() > 0.5
-        val = Float32(randn())
+        val = Float64(randn())
     else
         val = rand(1:nvar)
     end
@@ -638,11 +638,11 @@ end
 # Define a member of population by equation, score, and age
 mutable struct PopMember
     tree::Node
-    score::Float32
+    score::Float64
     birth::Integer
 
     PopMember(t::Node) = new(t, scoreFunc(t), getTime())
-    PopMember(t::Node, score::Float32) = new(t, score, getTime())
+    PopMember(t::Node, score::Float64) = new(t, score, getTime())
 
 end
 
@@ -691,7 +691,7 @@ end
 
 # Go through one simulated annealing mutation cycle
 #  exp(-delta/T) defines probability of accepting a change
-function iterate(member::PopMember, T::Float32, curmaxsize::Integer, frequencyComplexity::Array{Float32, 1})::PopMember
+function iterate(member::PopMember, T::Float64, curmaxsize::Integer, frequencyComplexity::Array{Float64, 1})::PopMember
     prev = member.tree
     tree = prev
     #TODO - reconsider this
@@ -817,7 +817,7 @@ end
 
 # Create a random equation by appending random operators
 function genRandomTree(length::Integer)::Node
-    tree = Node(1.0f0)
+    tree = Node(1.0e0)
     for i=1:length
         tree = appendRandomOp(tree)
     end
@@ -868,8 +868,8 @@ end
 
 # Pass through the population several times, replacing the oldest
 # with the fittest of a small subsample
-function regEvolCycle(pop::Population, T::Float32, curmaxsize::Integer,
-                      frequencyComplexity::Array{Float32, 1})::Population
+function regEvolCycle(pop::Population, T::Float64, curmaxsize::Integer,
+                      frequencyComplexity::Array{Float64, 1})::Population
     # Batch over each subsample. Can give 15% improvement in speed; probably moreso for large pops.
     # but is ultimately a different algorithm than regularized evolution, and might not be
     # as good.
@@ -917,16 +917,16 @@ function run(
         pop::Population,
         ncycles::Integer,
         curmaxsize::Integer,
-        frequencyComplexity::Array{Float32, 1};
+        frequencyComplexity::Array{Float64, 1};
         verbosity::Integer=0
        )::Population
 
-    allT = LinRange(1.0f0, 0.0f0, ncycles)
+    allT = LinRange(1.0e0, 0.0e0, ncycles)
     for iT in 1:size(allT)[1]
         if annealing
             pop = regEvolCycle(pop, allT[iT], curmaxsize, frequencyComplexity)
         else
-            pop = regEvolCycle(pop, 1.0f0, curmaxsize, frequencyComplexity)
+            pop = regEvolCycle(pop, 1.0e0, curmaxsize, frequencyComplexity)
         end
 
         if verbosity > 0 && (iT % verbosity == 0)
@@ -941,12 +941,12 @@ function run(
 end
 
 # Get all the constants from a tree
-function getConstants(tree::Node)::Array{Float32, 1}
+function getConstants(tree::Node)::Array{Float64, 1}
     if tree.degree == 0
         if tree.constant
             return [tree.val]
         else
-            return Float32[]
+            return Float64[]
         end
     elseif tree.degree == 1
         return getConstants(tree.l)
@@ -957,7 +957,7 @@ function getConstants(tree::Node)::Array{Float32, 1}
 end
 
 # Set all the constants inside a tree
-function setConstants(tree::Node, constants::Array{Float32, 1})
+function setConstants(tree::Node, constants::Array{Float64, 1})
     if tree.degree == 0
         if tree.constant
             tree.val = constants[1]
@@ -973,7 +973,7 @@ end
 
 
 # Proxy function for optimization
-function optFunc(x::Array{Float32, 1}, tree::Node)::Float32
+function optFunc(x::Array{Float64, 1}, tree::Node)::Float64
     setConstants(tree, x)
     return scoreFunc(tree)
 end
@@ -985,7 +985,7 @@ function optimizeConstants(member::PopMember)::PopMember
         return member
     end
     x0 = getConstants(member.tree)
-    f(x::Array{Float32,1})::Float32 = optFunc(x, member.tree)
+    f(x::Array{Float64,1})::Float64 = optFunc(x, member.tree)
     if size(x0)[1] == 1
         algorithm = Optim.Newton
     else
@@ -993,10 +993,10 @@ function optimizeConstants(member::PopMember)::PopMember
     end
 
     try
-        result = Optim.optimize(f, x0, algorithm(), Optim.Options(iterations=100))
+        result = Optim.optimize(f, x0, algorithm(), Optim.Options(iterations=1000, g_tol=1e-16))
         # Try other initial conditions:
         for i=1:nrestarts
-            tmpresult = Optim.optimize(f, x0 .* (1f0 .+ 5f-1*randn(Float32, size(x0)[1])), algorithm(), Optim.Options(iterations=100))
+            tmpresult = Optim.optimize(f, x0 .* (1e0 .+ 5e-1*randn(Float64, size(x0)[1])), algorithm(), Optim.Options(iterations=100, g_tol=1e-16))
             if tmpresult.minimum < result.minimum
                 result = tmpresult
             end
@@ -1004,7 +1004,7 @@ function optimizeConstants(member::PopMember)::PopMember
 
         if Optim.converged(result)
             setConstants(member.tree, result.minimizer)
-            member.score = convert(Float32, result.minimum)
+            member.score = convert(Float64, result.minimum)
             member.birth = getTime()
         else
             setConstants(member.tree, x0)
@@ -1027,13 +1027,13 @@ mutable struct HallOfFame
     exists::Array{Bool, 1} #Whether it has been set
 
     # Arranged by complexity - store one at each.
-    HallOfFame() = new([PopMember(Node(1f0), 1f9) for i=1:actualMaxsize], [false for i=1:actualMaxsize])
+    HallOfFame() = new([PopMember(Node(1e0), 1e9) for i=1:actualMaxsize], [false for i=1:actualMaxsize])
 end
 
 
 # Check for errors before they happen
 function testConfiguration()
-    test_input = LinRange(-100f0, 100f0, 99)
+    test_input = LinRange(-100e0, 100e0, 99)
 
     try
         for left in test_input
@@ -1056,7 +1056,7 @@ end
 function fullRun(niterations::Integer;
                 npop::Integer=300,
                 ncyclesperiteration::Integer=3000,
-                fractionReplaced::Float32=0.1f0,
+                fractionReplaced::Float64=0.1e0,
                 verbosity::Integer=0,
                 topn::Integer=10
                )
@@ -1069,7 +1069,7 @@ function fullRun(niterations::Integer;
     channels = [RemoteChannel(1) for j=1:npopulations]
     bestSubPops = [Population(1) for j=1:npopulations]
     hallOfFame = HallOfFame()
-    frequencyComplexity = ones(Float32, actualMaxsize)
+    frequencyComplexity = ones(Float64, actualMaxsize)
     curmaxsize = 3
     if warmupMaxsize == 0
         curmaxsize = maxsize
@@ -1096,7 +1096,7 @@ function fullRun(niterations::Integer;
     last_print_time = time()
     num_equations = 0.0
     print_every_n_seconds = 5
-    equation_speed = Float32[]
+    equation_speed = Float64[]
 
     for i=1:npopulations
         # Start listening for each population to finish:
@@ -1228,7 +1228,7 @@ function fullRun(niterations::Integer;
                 @printf("Hall of Fame:\n")
                 @printf("-----------------------------------------\n")
                 @printf("%-10s  %-8s   %-8s  %-8s\n", "Complexity", "MSE", "Score", "Equation")
-                @printf("%-10d  %-8.3e  %-8.3e  %-.f\n", 0, curMSE, 0f0, avgy)
+                @printf("%-10d  %-8.3e  %-8.3e  %-.f\n", 0, curMSE, 0e0, avgy)
             end
 
             for size=1:actualMaxsize
@@ -1254,7 +1254,7 @@ function fullRun(niterations::Integer;
                     if betterThanAllSmaller
                         delta_c = size - lastComplexity
                         delta_l_mse = log(curMSE/lastMSE)
-                        score = convert(Float32, -delta_l_mse/delta_c)
+                        score = convert(Float64, -delta_l_mse/delta_c)
                         if verbosity > 0
                             @printf("%-10d  %-8.3e  %-8.3e  %-s\n" , size, curMSE, score, stringTree(member.tree))
                         end
